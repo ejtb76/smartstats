@@ -1,3 +1,8 @@
+export interface Team {
+  id: string;
+  name: string;
+}
+
 export interface Player {
   id: string;
   firstName: string;

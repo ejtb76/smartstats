@@ -1,10 +1,13 @@
 import type { Game } from '../types';
+import { ensureActiveTeam } from './useTeam';
 
-const STORAGE_KEY = 'smartstats-games';
+function storageKey(): string {
+  return `smartstats-games-${ensureActiveTeam()}`;
+}
 
 export function loadGames(): Game[] {
   try {
-    const data = localStorage.getItem(STORAGE_KEY);
+    const data = localStorage.getItem(storageKey());
     return data ? JSON.parse(data) : [];
   } catch {
     return [];
@@ -12,7 +15,7 @@ export function loadGames(): Game[] {
 }
 
 export function saveGames(games: Game[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(games));
+  localStorage.setItem(storageKey(), JSON.stringify(games));
 }
 
 export function addGame(game: Omit<Game, 'id' | 'createdAt'> & { side?: 'home' | 'away' }): Game {
@@ -49,6 +52,11 @@ export function addGame(game: Omit<Game, 'id' | 'createdAt'> & { side?: 'home' |
   games.push(newGame);
   saveGames(games);
   return newGame;
+}
+
+export function updateGame(updated: Game) {
+  const games = loadGames().map(g => g.id === updated.id ? updated : g);
+  saveGames(games);
 }
 
 export function deleteGame(id: string) {

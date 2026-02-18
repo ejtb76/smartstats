@@ -4,6 +4,7 @@ import NotesField from '../components/NotesField';
 import AnalysisResult from '../components/AnalysisResult';
 import { apiFetch } from '../hooks/useApi';
 import { addGame } from '../hooks/useGames';
+import { ensureActiveTeam } from '../hooks/useTeam';
 import { Loader2, Camera } from 'lucide-react';
 import type { PlayerGameStats } from '../types';
 
@@ -80,7 +81,7 @@ export default function AnalyzePage() {
   function handleSave(data: AnalysisData) {
     setSaving(true);
     try {
-      const rosterData = localStorage.getItem('smartstats-roster');
+      const rosterData = localStorage.getItem(`smartstats-roster-${ensureActiveTeam()}`);
       const rosterPlayers: { id: string; firstName: string; lastName?: string }[] = rosterData ? JSON.parse(rosterData) : [];
       const playerStats = data.players.map(p => {
         const nameLower = p.playerName.toLowerCase();

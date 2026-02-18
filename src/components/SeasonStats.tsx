@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
+import { Download } from 'lucide-react';
 import { loadGames } from '../hooks/useGames';
+import { exportCsv } from '../hooks/useExport';
 import type { SeasonPlayerStats } from '../types';
 
 type SortKey = keyof SeasonPlayerStats;
@@ -71,6 +73,27 @@ export default function SeasonStats() {
     }
   }
 
+  function handleExport() {
+    const rows = stats.map(s => ({
+      Player: s.playerName,
+      G: s.games,
+      PA: s.PA,
+      AB: s.AB,
+      R: s.R,
+      H: s.H,
+      '2B': s['2B'],
+      '3B': s['3B'],
+      HR: s.HR,
+      BB: s.BB,
+      K: s.K,
+      RBI: s.RBI,
+      AVG: s.AVG.toFixed(3),
+      OBP: s.OBP.toFixed(3),
+      SLG: s.SLG.toFixed(3),
+    }));
+    exportCsv(rows, 'season-stats.csv');
+  }
+
   const sorted = [...stats].sort((a, b) => {
     const aVal = a[sortKey];
     const bVal = b[sortKey];
@@ -102,7 +125,17 @@ export default function SeasonStats() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-gray-900">Season Statistics</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-gray-900">Season Statistics</h2>
+        {stats.length > 0 && (
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            <Download size={16} /> Export CSV
+          </button>
+        )}
+      </div>
 
       {stats.length === 0 ? (
         <p className="text-gray-500 text-sm">No game data yet. Analyze scoresheets to build statistics.</p>

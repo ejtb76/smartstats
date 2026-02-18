@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X, Check } from 'lucide-react';
 import { apiFetch } from '../hooks/useApi';
+import { ensureActiveTeam } from '../hooks/useTeam';
 import type { Player } from '../types';
 
-const STORAGE_KEY = 'smartstats-roster';
+function rosterKey(): string {
+  return `smartstats-roster-${ensureActiveTeam()}`;
+}
 
 function loadRoster(): Player[] {
   try {
-    const data = localStorage.getItem(STORAGE_KEY);
+    const data = localStorage.getItem(rosterKey());
     return data ? JSON.parse(data) : [];
   } catch {
     return [];
@@ -15,8 +18,7 @@ function loadRoster(): Player[] {
 }
 
 function saveRoster(players: Player[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
-  // Sync to server in background so the analyzer can use it
+  localStorage.setItem(rosterKey(), JSON.stringify(players));
   apiFetch('/api/roster/sync', {
     method: 'PUT',
     body: JSON.stringify(players),
@@ -34,7 +36,7 @@ export default function RosterManager() {
       apiFetch<Player[]>('/api/roster').then(serverPlayers => {
         if (serverPlayers.length > 0) {
           setPlayers(serverPlayers);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(serverPlayers));
+          localStorage.setItem(rosterKey(), JSON.stringify(serverPlayers));
         }
       }).catch(() => {});
     }

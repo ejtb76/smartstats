@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Trash2, Download } from 'lucide-react';
 import { loadGames, deleteGame } from '../hooks/useGames';
+import { exportCsv } from '../hooks/useExport';
 import type { Game } from '../types';
 import GameDetail from './GameDetail';
 
@@ -13,9 +14,76 @@ export default function GameHistory() {
     setGames(games.filter(g => g.id !== id));
   }
 
+  function handleGameUpdated(updated: Game) {
+    setGames(games.map(g => g.id === updated.id ? updated : g));
+  }
+
+  function handleExport() {
+    const rows: Record<string, string | number>[] = [];
+    for (const game of games) {
+      for (const ps of game.playerStats) {
+        rows.push({
+          Date: game.date,
+          Opponent: game.opponent,
+          Score: game.score || '',
+          Player: ps.playerName,
+          Side: 'home',
+          PA: ps.PA,
+          AB: ps.AB,
+          R: ps.R,
+          H: ps.H,
+          '2B': ps['2B'],
+          '3B': ps['3B'],
+          HR: ps.HR,
+          BB: ps.BB,
+          K: ps.K,
+          RBI: ps.RBI,
+          AVG: ps.AVG.toFixed(3),
+          OBP: ps.OBP.toFixed(3),
+          SLG: ps.SLG.toFixed(3),
+        });
+      }
+      if (game.opponentStats) {
+        for (const ps of game.opponentStats) {
+          rows.push({
+            Date: game.date,
+            Opponent: game.opponent,
+            Score: game.score || '',
+            Player: ps.playerName,
+            Side: 'away',
+            PA: ps.PA,
+            AB: ps.AB,
+            R: ps.R,
+            H: ps.H,
+            '2B': ps['2B'],
+            '3B': ps['3B'],
+            HR: ps.HR,
+            BB: ps.BB,
+            K: ps.K,
+            RBI: ps.RBI,
+            AVG: ps.AVG.toFixed(3),
+            OBP: ps.OBP.toFixed(3),
+            SLG: ps.SLG.toFixed(3),
+          });
+        }
+      }
+    }
+    exportCsv(rows, 'game-history.csv');
+  }
+
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-gray-900">Game History</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-gray-900">Game History</h2>
+        {games.length > 0 && (
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            <Download size={16} /> Export CSV
+          </button>
+        )}
+      </div>
 
       {games.length === 0 ? (
         <p className="text-gray-500 text-sm">No games recorded yet.</p>
@@ -44,7 +112,7 @@ export default function GameHistory() {
               </div>
               {expanded === game.id && (
                 <div className="border-t px-4 py-3">
-                  <GameDetail game={game} />
+                  <GameDetail game={game} onGameUpdated={handleGameUpdated} />
                 </div>
               )}
             </div>
