@@ -14,11 +14,12 @@ interface Props {
   onSave: (data: AnalysisData) => void;
   saving: boolean;
   saved: boolean;
+  side: 'home' | 'away';
 }
 
 const STAT_KEYS = ['PA', 'AB', 'R', 'H', '2B', '3B', 'HR', 'BB', 'K', 'RBI'] as const;
 
-export default function AnalysisResult({ data, onSave, saving, saved }: Props) {
+export default function AnalysisResult({ data, onSave, saving, saved, side }: Props) {
   const [editData, setEditData] = useState<AnalysisData>(data);
 
   function updatePlayer(index: number, field: string, value: string | number) {
@@ -38,7 +39,10 @@ export default function AnalysisResult({ data, onSave, saving, saved }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Analysis Results</h3>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Analysis Results</h3>
+          <span className="text-sm text-gray-500">{side === 'home' ? 'Home (our batting)' : 'Away (opponent batting)'}</span>
+        </div>
         <button
           onClick={() => onSave(editData)}
           disabled={saving || saved}

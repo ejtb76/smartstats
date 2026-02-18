@@ -3,7 +3,7 @@ import PhotoUpload from '../components/PhotoUpload';
 import NotesField from '../components/NotesField';
 import AnalysisResult from '../components/AnalysisResult';
 import { apiFetch } from '../hooks/useApi';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Camera } from 'lucide-react';
 import type { PlayerGameStats } from '../types';
 
 interface AnalysisData {
@@ -12,6 +12,8 @@ interface AnalysisData {
   date: string;
   players: PlayerGameStats[];
 }
+
+type Side = 'home' | 'away';
 
 export default function AnalyzePage() {
   const [file, setFile] = useState<File | null>(null);
@@ -22,6 +24,7 @@ export default function AnalyzePage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [side, setSide] = useState<Side>('home');
 
   const handleFileSelect = useCallback((f: File) => {
     setFile(f);
@@ -40,6 +43,16 @@ export default function AnalyzePage() {
     setError('');
   }, [preview]);
 
+  function handleNewPhoto() {
+    setFile(null);
+    if (preview) URL.revokeObjectURL(preview);
+    setPreview(null);
+    setResult(null);
+    setSaved(false);
+    setError('');
+    setNotes('');
+  }
+
   async function handleAnalyze() {
     if (!file) return;
     setAnalyzing(true);
@@ -49,6 +62,7 @@ export default function AnalyzePage() {
       const formData = new FormData();
       formData.append('photo', file);
       formData.append('notes', notes);
+      formData.append('side', side);
 
       const data = await apiFetch<AnalysisData>('/api/analyze', {
         method: 'POST',
@@ -65,7 +79,6 @@ export default function AnalyzePage() {
   async function handleSave(data: AnalysisData) {
     setSaving(true);
     try {
-      // Match players against roster by first name and assign IDs
       const rosterPlayers = await apiFetch<{ id: string; firstName: string; lastName?: string }[]>('/api/roster');
       const playerStats = data.players.map(p => {
         const nameLower = p.playerName.toLowerCase();
@@ -88,6 +101,7 @@ export default function AnalyzePage() {
           opponent: data.opponent || 'Unknown',
           score: data.score,
           notes,
+          side,
           playerStats,
         }),
       });
@@ -102,6 +116,32 @@ export default function AnalyzePage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <h2 className="text-xl font-bold text-gray-900">Analyze Scoresheet</h2>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Which side of the scoresheet?</label>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setSide('home')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+              side === 'home'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Home (our batting)
+          </button>
+          <button
+            onClick={() => setSide('away')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+              side === 'away'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Away (opponent batting)
+          </button>
+        </div>
+      </div>
 
       <PhotoUpload file={file} preview={preview} onFileSelect={handleFileSelect} onClear={handleClear} />
 
@@ -123,7 +163,15 @@ export default function AnalyzePage() {
       )}
 
       {result && (
-        <AnalysisResult data={result} onSave={handleSave} saving={saving} saved={saved} />
+        <>
+          <AnalysisResult data={result} onSave={handleSave} saving={saving} saved={saved} side={side} />
+          <button
+            onClick={handleNewPhoto}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium"
+          >
+            <Camera size={16} /> Analyze Another Photo
+          </button>
+        </>
       )}
     </div>
   );

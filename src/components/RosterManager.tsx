@@ -6,7 +6,6 @@ import type { Player } from '../types';
 export default function RosterManager() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ firstName: '', lastName: '', number: '', position: '' });
 
   useEffect(() => {
@@ -21,7 +20,6 @@ export default function RosterManager() {
     });
     setPlayers([...players, player]);
     setForm({ firstName: '', lastName: '', number: '', position: '' });
-    setAdding(false);
   }
 
   async function handleUpdate(id: string) {
@@ -50,49 +48,40 @@ export default function RosterManager() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">Roster</h2>
-          <p className="text-sm text-gray-500">Add player names to help the analyzer match names on scoresheets. First names are usually what appears on the scorecard.</p>
+      <div>
+        <h2 className="text-xl font-bold text-gray-900">Roster</h2>
+        <p className="text-sm text-gray-500">Add player names to help the analyzer match names on scoresheets. First names are usually what appears on the scorecard.</p>
+      </div>
+
+      <div className="bg-blue-50 p-4 rounded-lg flex items-end gap-3 flex-wrap">
+        <div className="w-40">
+          <label className="block text-xs text-gray-600 mb-1">First name *</label>
+          <input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })}
+            className="w-full border rounded px-2 py-1 text-sm" placeholder="e.g. Albert"
+            onKeyDown={e => e.key === 'Enter' && handleAdd()} />
         </div>
-        <button
-          onClick={() => { setAdding(true); setForm({ firstName: '', lastName: '', number: '', position: '' }); }}
-          className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shrink-0"
-        >
+        <div className="w-40">
+          <label className="block text-xs text-gray-600 mb-1">Last name</label>
+          <input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })}
+            className="w-full border rounded px-2 py-1 text-sm" placeholder="e.g. van Asten"
+            onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+        </div>
+        <div className="w-16">
+          <label className="block text-xs text-gray-600 mb-1">#</label>
+          <input value={form.number} onChange={e => setForm({ ...form, number: e.target.value })}
+            className="w-full border rounded px-2 py-1 text-sm" placeholder="#"
+            onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+        </div>
+        <div className="w-20">
+          <label className="block text-xs text-gray-600 mb-1">Position</label>
+          <input value={form.position} onChange={e => setForm({ ...form, position: e.target.value })}
+            className="w-full border rounded px-2 py-1 text-sm" placeholder="Pos"
+            onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+        </div>
+        <button onClick={handleAdd} className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
           <Plus size={16} /> Add Player
         </button>
       </div>
-
-      {adding && (
-        <div className="bg-blue-50 p-4 rounded-lg flex items-end gap-3 flex-wrap">
-          <div className="w-40">
-            <label className="block text-xs text-gray-600 mb-1">First name *</label>
-            <input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })}
-              className="w-full border rounded px-2 py-1 text-sm" placeholder="e.g. Albert"
-              onKeyDown={e => e.key === 'Enter' && handleAdd()} autoFocus />
-          </div>
-          <div className="w-40">
-            <label className="block text-xs text-gray-600 mb-1">Last name</label>
-            <input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })}
-              className="w-full border rounded px-2 py-1 text-sm" placeholder="e.g. van Asten"
-              onKeyDown={e => e.key === 'Enter' && handleAdd()} />
-          </div>
-          <div className="w-16">
-            <label className="block text-xs text-gray-600 mb-1">#</label>
-            <input value={form.number} onChange={e => setForm({ ...form, number: e.target.value })}
-              className="w-full border rounded px-2 py-1 text-sm" placeholder="#"
-              onKeyDown={e => e.key === 'Enter' && handleAdd()} />
-          </div>
-          <div className="w-20">
-            <label className="block text-xs text-gray-600 mb-1">Position</label>
-            <input value={form.position} onChange={e => setForm({ ...form, position: e.target.value })}
-              className="w-full border rounded px-2 py-1 text-sm" placeholder="Pos"
-              onKeyDown={e => e.key === 'Enter' && handleAdd()} />
-          </div>
-          <button onClick={handleAdd} className="p-2 text-green-600 hover:bg-green-50 rounded"><Check size={18} /></button>
-          <button onClick={() => setAdding(false)} className="p-2 text-gray-400 hover:bg-gray-100 rounded"><X size={18} /></button>
-        </div>
-      )}
 
       <div className="bg-white rounded-lg border border-gray-200 divide-y">
         {players.length === 0 && (
