@@ -1,19 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
-import { apiFetch } from '../hooks/useApi';
+import { loadGames, deleteGame } from '../hooks/useGames';
 import type { Game } from '../types';
 import GameDetail from './GameDetail';
 
 export default function GameHistory() {
-  const [games, setGames] = useState<Game[]>([]);
+  const [games, setGames] = useState<Game[]>(loadGames);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  useEffect(() => {
-    apiFetch<Game[]>('/api/games').then(setGames);
-  }, []);
-
-  async function handleDelete(id: string) {
-    await apiFetch(`/api/games/${id}`, { method: 'DELETE' });
+  function handleDelete(id: string) {
+    deleteGame(id);
     setGames(games.filter(g => g.id !== id));
   }
 

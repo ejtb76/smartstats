@@ -3,6 +3,7 @@ import PhotoUpload from '../components/PhotoUpload';
 import NotesField from '../components/NotesField';
 import AnalysisResult from '../components/AnalysisResult';
 import { apiFetch } from '../hooks/useApi';
+import { addGame } from '../hooks/useGames';
 import { Loader2, Camera } from 'lucide-react';
 import type { PlayerGameStats } from '../types';
 
@@ -76,10 +77,11 @@ export default function AnalyzePage() {
     }
   }
 
-  async function handleSave(data: AnalysisData) {
+  function handleSave(data: AnalysisData) {
     setSaving(true);
     try {
-      const rosterPlayers = await apiFetch<{ id: string; firstName: string; lastName?: string }[]>('/api/roster');
+      const rosterData = localStorage.getItem('smartstats-roster');
+      const rosterPlayers: { id: string; firstName: string; lastName?: string }[] = rosterData ? JSON.parse(rosterData) : [];
       const playerStats = data.players.map(p => {
         const nameLower = p.playerName.toLowerCase();
         const rosterMatch = rosterPlayers.find(rp => {
@@ -94,16 +96,13 @@ export default function AnalyzePage() {
         };
       });
 
-      await apiFetch('/api/games', {
-        method: 'POST',
-        body: JSON.stringify({
-          date: data.date || new Date().toISOString().split('T')[0],
-          opponent: data.opponent || 'Unknown',
-          score: data.score,
-          notes,
-          side,
-          playerStats,
-        }),
+      addGame({
+        date: data.date || new Date().toISOString().split('T')[0],
+        opponent: data.opponent || 'Unknown',
+        score: data.score,
+        notes,
+        side,
+        playerStats,
       });
       setSaved(true);
     } catch (err) {
