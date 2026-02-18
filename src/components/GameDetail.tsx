@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pencil, Save, Check, X } from 'lucide-react';
+import { Pencil, Save, Check, X, Trash2 } from 'lucide-react';
 import { updateGame } from '../hooks/useGames';
 import type { Game, PlayerGameStats } from '../types';
 
@@ -65,6 +65,10 @@ function EditableStatsTable({ players, label, onChange }: {
     onChange(updated);
   }
 
+  function removePlayer(index: number) {
+    onChange(players.filter((_, i) => i !== index));
+  }
+
   return (
     <div>
       <h4 className="text-sm font-semibold text-gray-700 mb-2">{label}</h4>
@@ -80,6 +84,7 @@ function EditableStatsTable({ players, label, onChange }: {
               <th className="text-center px-2 py-1 font-medium text-gray-700">AVG</th>
               <th className="text-center px-2 py-1 font-medium text-gray-700">OBP</th>
               <th className="text-center px-2 py-1 font-medium text-gray-700">SLG</th>
+              <th className="px-1 py-1"></th>
             </tr>
           </thead>
           <tbody>
@@ -87,7 +92,11 @@ function EditableStatsTable({ players, label, onChange }: {
               <tr key={i} className={`border-t ${ps.isSubstitute ? 'bg-yellow-50' : ''}`}>
                 <td className="px-2 py-1 text-gray-500">{ps.battingOrder}</td>
                 <td className="px-2 py-1">
-                  <span className="font-medium">{ps.playerName}</span>
+                  <input
+                    value={ps.playerName}
+                    onChange={e => updatePlayer(i, 'playerName', e.target.value)}
+                    className="w-32 border border-gray-200 rounded px-1 py-0.5 text-sm font-medium"
+                  />
                   {ps.isSubstitute && <span className="text-xs text-yellow-600 ml-1">(SUB)</span>}
                 </td>
                 {STAT_KEYS.map(key => (
@@ -104,6 +113,11 @@ function EditableStatsTable({ players, label, onChange }: {
                 <td className="text-center px-2 py-1 font-mono">{ps.AVG.toFixed(3)}</td>
                 <td className="text-center px-2 py-1 font-mono">{ps.OBP.toFixed(3)}</td>
                 <td className="text-center px-2 py-1 font-mono">{ps.SLG.toFixed(3)}</td>
+                <td className="px-1 py-1">
+                  <button onClick={() => removePlayer(i)} className="p-0.5 text-gray-400 hover:text-red-600 rounded">
+                    <Trash2 size={14} />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
