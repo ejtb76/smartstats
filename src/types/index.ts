@@ -34,6 +34,7 @@ export interface Game {
   score?: string;
   notes: string;
   playerStats: PlayerGameStats[];
+  opponentStats?: PlayerGameStats[];
   rawImageBase64?: string;
   createdAt: string;
 }

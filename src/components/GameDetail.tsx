@@ -1,14 +1,11 @@
-import type { Game } from '../types';
+import type { Game, PlayerGameStats } from '../types';
 
 const STAT_KEYS = ['PA', 'AB', 'R', 'H', '2B', '3B', 'HR', 'BB', 'K', 'RBI'] as const;
 
-export default function GameDetail({ game }: { game: Game }) {
+function StatsTable({ players, label }: { players: PlayerGameStats[]; label: string }) {
   return (
-    <div className="space-y-3">
-      {game.notes && (
-        <p className="text-sm text-gray-600 italic">Notes: {game.notes}</p>
-      )}
-
+    <div>
+      <h4 className="text-sm font-semibold text-gray-700 mb-2">{label}</h4>
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
@@ -24,7 +21,7 @@ export default function GameDetail({ game }: { game: Game }) {
             </tr>
           </thead>
           <tbody>
-            {game.playerStats.map((ps, i) => (
+            {players.map((ps, i) => (
               <tr key={i} className={`border-t ${ps.isSubstitute ? 'bg-yellow-50' : ''}`}>
                 <td className="px-2 py-1 text-gray-500">{ps.battingOrder}</td>
                 <td className="px-2 py-1 font-medium">
@@ -42,6 +39,24 @@ export default function GameDetail({ game }: { game: Game }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+export default function GameDetail({ game }: { game: Game }) {
+  return (
+    <div className="space-y-4">
+      {game.notes && (
+        <p className="text-sm text-gray-600 italic">Notes: {game.notes}</p>
+      )}
+
+      {game.playerStats.length > 0 && (
+        <StatsTable players={game.playerStats} label="Our Batting" />
+      )}
+
+      {game.opponentStats && game.opponentStats.length > 0 && (
+        <StatsTable players={game.opponentStats} label="Opponent Batting" />
+      )}
     </div>
   );
 }
