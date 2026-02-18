@@ -65,6 +65,8 @@ export default function AnalyzePage() {
       formData.append('photo', file);
       formData.append('notes', notes);
       formData.append('side', side);
+      const rosterData = localStorage.getItem(`smartstats-roster-${ensureActiveTeam()}`);
+      if (rosterData) formData.append('roster', rosterData);
 
       const data = await apiFetch<AnalysisData>('/api/analyze', {
         method: 'POST',

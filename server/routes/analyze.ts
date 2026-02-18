@@ -23,7 +23,14 @@ router.post('/', upload.single('photo'), async (req, res) => {
       return;
     }
 
-    const roster = readJSON<Player[]>('roster.json');
+    // Prefer roster sent from client (localStorage), fall back to server file
+    let roster: Player[] = [];
+    if (req.body.roster) {
+      try { roster = JSON.parse(req.body.roster); } catch { roster = []; }
+    }
+    if (roster.length === 0) {
+      roster = readJSON<Player[]>('roster.json');
+    }
     const imageBase64 = file.buffer.toString('base64');
     const mimeType = file.mimetype;
 
