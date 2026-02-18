@@ -224,6 +224,10 @@ Return ONLY a JSON object in this exact format (no markdown, no explanation):
     throw new Error('No text response from Claude');
   }
 
-  const jsonStr = textBlock.text.trim();
+  let jsonStr = textBlock.text.trim();
+  // Strip markdown code fences if present
+  if (jsonStr.startsWith('```')) {
+    jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
+  }
   return JSON.parse(jsonStr);
 }
