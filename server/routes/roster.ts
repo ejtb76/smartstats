@@ -23,6 +23,13 @@ router.post('/', (req, res) => {
   res.status(201).json(player);
 });
 
+// Bulk sync from localStorage
+router.put('/sync', (req, res) => {
+  const players = req.body as Player[];
+  writeJSON('roster.json', players);
+  res.json(players);
+});
+
 router.put('/:id', (req, res) => {
   const roster = readJSON<Player[]>('roster.json');
   const index = roster.findIndex(p => p.id === req.params.id);

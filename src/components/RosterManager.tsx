@@ -3,37 +3,75 @@ import { Plus, Pencil, Trash2, X, Check } from 'lucide-react';
 import { apiFetch } from '../hooks/useApi';
 import type { Player } from '../types';
 
+const STORAGE_KEY = 'smartstats-roster';
+
+function loadRoster(): Player[] {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRoster(players: Player[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
+  // Sync to server in background so the analyzer can use it
+  apiFetch('/api/roster/sync', {
+    method: 'PUT',
+    body: JSON.stringify(players),
+  }).catch(() => {});
+}
+
 export default function RosterManager() {
-  const [players, setPlayers] = useState<Player[]>([]);
+  const [players, setPlayers] = useState<Player[]>(loadRoster);
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState({ firstName: '', lastName: '', number: '', position: '' });
 
+  // On mount, if localStorage is empty but server has data, pull from server
   useEffect(() => {
-    apiFetch<Player[]>('/api/roster').then(setPlayers);
+    if (players.length === 0) {
+      apiFetch<Player[]>('/api/roster').then(serverPlayers => {
+        if (serverPlayers.length > 0) {
+          setPlayers(serverPlayers);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(serverPlayers));
+        }
+      }).catch(() => {});
+    }
   }, []);
 
-  async function handleAdd() {
+  function updatePlayers(next: Player[]) {
+    setPlayers(next);
+    saveRoster(next);
+  }
+
+  function handleAdd() {
     if (!form.firstName.trim()) return;
-    const player = await apiFetch<Player>('/api/roster', {
-      method: 'POST',
-      body: JSON.stringify(form),
-    });
-    setPlayers([...players, player]);
+    const player: Player = {
+      id: crypto.randomUUID(),
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim() || undefined,
+      number: form.number.trim() || undefined,
+      position: form.position.trim() || undefined,
+    };
+    updatePlayers([...players, player]);
     setForm({ firstName: '', lastName: '', number: '', position: '' });
   }
 
-  async function handleUpdate(id: string) {
-    const updated = await apiFetch<Player>(`/api/roster/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(form),
-    });
-    setPlayers(players.map(p => p.id === id ? updated : p));
+  function handleUpdate(id: string) {
+    const next = players.map(p => p.id === id ? {
+      ...p,
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim() || undefined,
+      number: form.number.trim() || undefined,
+      position: form.position.trim() || undefined,
+    } : p);
+    updatePlayers(next);
     setEditing(null);
   }
 
-  async function handleDelete(id: string) {
-    await apiFetch(`/api/roster/${id}`, { method: 'DELETE' });
-    setPlayers(players.filter(p => p.id !== id));
+  function handleDelete(id: string) {
+    updatePlayers(players.filter(p => p.id !== id));
   }
 
   function startEdit(player: Player) {
