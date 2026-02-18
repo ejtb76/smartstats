@@ -1,0 +1,133 @@
+import { useState, useEffect } from 'react';
+import { Plus, Pencil, Trash2, X, Check } from 'lucide-react';
+import { apiFetch } from '../hooks/useApi';
+import type { Player } from '../types';
+
+export default function RosterManager() {
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ firstName: '', lastName: '', number: '', position: '' });
+
+  useEffect(() => {
+    apiFetch<Player[]>('/api/roster').then(setPlayers);
+  }, []);
+
+  async function handleAdd() {
+    if (!form.firstName.trim()) return;
+    const player = await apiFetch<Player>('/api/roster', {
+      method: 'POST',
+      body: JSON.stringify(form),
+    });
+    setPlayers([...players, player]);
+    setForm({ firstName: '', lastName: '', number: '', position: '' });
+    setAdding(false);
+  }
+
+  async function handleUpdate(id: string) {
+    const updated = await apiFetch<Player>(`/api/roster/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(form),
+    });
+    setPlayers(players.map(p => p.id === id ? updated : p));
+    setEditing(null);
+  }
+
+  async function handleDelete(id: string) {
+    await apiFetch(`/api/roster/${id}`, { method: 'DELETE' });
+    setPlayers(players.filter(p => p.id !== id));
+  }
+
+  function startEdit(player: Player) {
+    setEditing(player.id);
+    setForm({
+      firstName: player.firstName,
+      lastName: player.lastName || '',
+      number: player.number || '',
+      position: player.position || '',
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Roster</h2>
+          <p className="text-sm text-gray-500">Add player names to help the analyzer match names on scoresheets. First names are usually what appears on the scorecard.</p>
+        </div>
+        <button
+          onClick={() => { setAdding(true); setForm({ firstName: '', lastName: '', number: '', position: '' }); }}
+          className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shrink-0"
+        >
+          <Plus size={16} /> Add Player
+        </button>
+      </div>
+
+      {adding && (
+        <div className="bg-blue-50 p-4 rounded-lg flex items-end gap-3 flex-wrap">
+          <div className="w-40">
+            <label className="block text-xs text-gray-600 mb-1">First name *</label>
+            <input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })}
+              className="w-full border rounded px-2 py-1 text-sm" placeholder="e.g. Albert"
+              onKeyDown={e => e.key === 'Enter' && handleAdd()} autoFocus />
+          </div>
+          <div className="w-40">
+            <label className="block text-xs text-gray-600 mb-1">Last name</label>
+            <input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })}
+              className="w-full border rounded px-2 py-1 text-sm" placeholder="e.g. van Asten"
+              onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+          </div>
+          <div className="w-16">
+            <label className="block text-xs text-gray-600 mb-1">#</label>
+            <input value={form.number} onChange={e => setForm({ ...form, number: e.target.value })}
+              className="w-full border rounded px-2 py-1 text-sm" placeholder="#"
+              onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+          </div>
+          <div className="w-20">
+            <label className="block text-xs text-gray-600 mb-1">Position</label>
+            <input value={form.position} onChange={e => setForm({ ...form, position: e.target.value })}
+              className="w-full border rounded px-2 py-1 text-sm" placeholder="Pos"
+              onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+          </div>
+          <button onClick={handleAdd} className="p-2 text-green-600 hover:bg-green-50 rounded"><Check size={18} /></button>
+          <button onClick={() => setAdding(false)} className="p-2 text-gray-400 hover:bg-gray-100 rounded"><X size={18} /></button>
+        </div>
+      )}
+
+      <div className="bg-white rounded-lg border border-gray-200 divide-y">
+        {players.length === 0 && (
+          <p className="p-4 text-gray-500 text-sm">No players in roster yet. Add players so the analyzer can match names on scoresheets.</p>
+        )}
+        {players.map(player => (
+          <div key={player.id} className="flex items-center px-4 py-3">
+            {editing === player.id ? (
+              <>
+                <input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })}
+                  className="w-32 border rounded px-2 py-1 text-sm mr-2" placeholder="First name" autoFocus />
+                <input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })}
+                  className="w-32 border rounded px-2 py-1 text-sm mr-2" placeholder="Last name" />
+                <input value={form.number} onChange={e => setForm({ ...form, number: e.target.value })}
+                  className="w-14 border rounded px-2 py-1 text-sm mr-2" placeholder="#" />
+                <input value={form.position} onChange={e => setForm({ ...form, position: e.target.value })}
+                  className="w-16 border rounded px-2 py-1 text-sm mr-2" placeholder="Pos" />
+                <button onClick={() => handleUpdate(player.id)} className="p-1 text-green-600 hover:bg-green-50 rounded"><Check size={16} /></button>
+                <button onClick={() => setEditing(null)} className="p-1 text-gray-400 hover:bg-gray-100 rounded"><X size={16} /></button>
+              </>
+            ) : (
+              <>
+                <div className="flex-1">
+                  <span className="font-medium text-gray-900">{player.firstName}</span>
+                  {player.lastName && <span className="text-gray-600 ml-1">{player.lastName}</span>}
+                  {player.number && <span className="text-gray-400 ml-2">#{player.number}</span>}
+                  {player.position && <span className="text-gray-400 ml-2 text-sm">{player.position}</span>}
+                </div>
+                <button onClick={() => startEdit(player)} className="p-1 text-gray-400 hover:text-blue-600 rounded"><Pencil size={16} /></button>
+                <button onClick={() => handleDelete(player.id)} className="p-1 text-gray-400 hover:text-red-600 rounded ml-1"><Trash2 size={16} /></button>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
