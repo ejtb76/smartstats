@@ -11,10 +11,16 @@ export async function analyzeScoresheet(
   const client = new Anthropic({ apiKey });
 
   const rosterList = roster.length > 0
-    ? `Known roster players (use these for name matching — scorecards typically show first names only):\n${roster.map(p => {
+    ? `ROSTER (${roster.length} players) — you MUST use ONLY these names in your output:\n${roster.map((p, i) => {
         const fullName = p.lastName ? `${p.firstName} ${p.lastName}` : p.firstName;
-        return `- First name: "${p.firstName}"${p.lastName ? `, Full name: "${fullName}"` : ''}${p.number ? `, #${p.number}` : ''}${p.position ? ` (${p.position})` : ''}`;
-      }).join('\n')}\n\nIMPORTANT: Match names on the scorecard to these players by first name. Scorecards often use the KNBSB format "ACHTERNAAM Voornaam" (last name first, then first name) or just the first name. Use the closest match.`
+        return `${i + 1}. "${fullName}" (first name: "${p.firstName}"${p.number ? `, #${p.number}` : ''}${p.position ? `, ${p.position}` : ''})`;
+      }).join('\n')}\n\nSTRICT ROSTER MATCHING RULES:
+- You MUST output exactly the full name from the roster above for each player (e.g. "${roster[0]?.lastName ? `${roster[0].firstName} ${roster[0].lastName}` : roster[0]?.firstName}").
+- Scorecards use KNBSB format: "ACHTERNAAM Voornaam" (last name in caps, then first name). Match by first name, last name, or any partial match to the roster.
+- If a name on the scorecard is hard to read, pick the closest roster match. Do NOT invent names.
+- NEVER output a player name that is not on the roster. If you cannot match a name, skip that player entirely.
+- Each roster player should appear AT MOST once in the output (no duplicates). If you see the same player twice on the scoresheet (e.g. starter + substitute rows), combine their stats into one entry.
+- The scoresheet should have roughly ${Math.min(roster.length, 9)}-${Math.min(roster.length, 12)} batters. If you find significantly more, you are likely creating duplicates.`
     : 'No roster provided. Extract player names as they appear on the scoresheet.';
 
   const prompt = `You are analyzing a KNBSB (Royal Dutch Baseball and Softball Federation) scoresheet photo. You must derive batting statistics from the official Dutch scoring notation used in per-inning at-bat boxes.
