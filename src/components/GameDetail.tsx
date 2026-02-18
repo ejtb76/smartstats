@@ -1,7 +1,18 @@
-import { useState } from 'react';
-import { Pencil, Save, Check, X, Trash2 } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Pencil, Save, Check, X, Trash2, Camera, Loader2 } from 'lucide-react';
 import { updateGame } from '../hooks/useGames';
+import { apiFetch } from '../hooks/useApi';
+import { ensureActiveTeam } from '../hooks/useTeam';
+import PhotoUpload from './PhotoUpload';
+import AnalysisResult from './AnalysisResult';
 import type { Game, PlayerGameStats } from '../types';
+
+interface AnalysisData {
+  opponent: string;
+  score: string;
+  date: string;
+  players: PlayerGameStats[];
+}
 
 const STAT_KEYS = ['PA', 'AB', 'R', 'H', '2B', '3B', 'HR', 'BB', 'K', 'RBI'] as const;
 
@@ -137,6 +148,17 @@ export default function GameDetail({ game, onGameUpdated }: Props) {
   const [editGame, setEditGame] = useState<Game>(game);
   const [saved, setSaved] = useState(false);
 
+  // Re-analyze state
+  const [reanalyzing, setReanalyzing] = useState(false);
+  const [raFile, setRaFile] = useState<File | null>(null);
+  const [raPreview, setRaPreview] = useState<string | null>(null);
+  const [raNotes, setRaNotes] = useState(game.notes || '');
+  const [raAnalyzing, setRaAnalyzing] = useState(false);
+  const [raResult, setRaResult] = useState<AnalysisData | null>(null);
+  const [raError, setRaError] = useState('');
+  const [raSaving, setRaSaving] = useState(false);
+  const [raSaved, setRaSaved] = useState(false);
+
   function startEdit() {
     setEditGame({ ...game, playerStats: game.playerStats.map(p => ({ ...p })), opponentStats: game.opponentStats?.map(p => ({ ...p })) });
     setEditing(true);
@@ -154,6 +176,108 @@ export default function GameDetail({ game, onGameUpdated }: Props) {
     setSaved(true);
     onGameUpdated?.(editGame);
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  // Re-analyze handlers
+  function startReanalyze() {
+    setReanalyzing(true);
+    setRaFile(null);
+    setRaPreview(null);
+    setRaNotes(game.notes || '');
+    setRaResult(null);
+    setRaError('');
+    setRaSaved(false);
+  }
+
+  function cancelReanalyze() {
+    if (raPreview) URL.revokeObjectURL(raPreview);
+    setReanalyzing(false);
+    setRaFile(null);
+    setRaPreview(null);
+    setRaResult(null);
+    setRaError('');
+    setRaSaved(false);
+  }
+
+  const handleRaFileSelect = useCallback((f: File) => {
+    setRaFile(f);
+    setRaPreview(URL.createObjectURL(f));
+    setRaResult(null);
+    setRaSaved(false);
+    setRaError('');
+  }, []);
+
+  const handleRaClear = useCallback(() => {
+    setRaFile(null);
+    if (raPreview) URL.revokeObjectURL(raPreview);
+    setRaPreview(null);
+    setRaResult(null);
+    setRaError('');
+  }, [raPreview]);
+
+  async function handleRaAnalyze() {
+    if (!raFile) return;
+    setRaAnalyzing(true);
+    setRaError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('photo', raFile);
+      formData.append('notes', raNotes);
+      formData.append('side', 'home');
+      const rosterData = localStorage.getItem(`smartstats-roster-${ensureActiveTeam()}`);
+      if (rosterData) formData.append('roster', rosterData);
+
+      const data = await apiFetch<AnalysisData>('/api/analyze', {
+        method: 'POST',
+        body: formData,
+      });
+      setRaResult(data);
+    } catch (err) {
+      setRaError(err instanceof Error ? err.message : 'Analysis failed');
+    } finally {
+      setRaAnalyzing(false);
+    }
+  }
+
+  function handleRaSave(data: AnalysisData) {
+    setRaSaving(true);
+    try {
+      const rosterData = localStorage.getItem(`smartstats-roster-${ensureActiveTeam()}`);
+      const rosterPlayers: { id: string; firstName: string; lastName?: string }[] = rosterData ? JSON.parse(rosterData) : [];
+      const playerStats = data.players.map(p => {
+        const nameLower = p.playerName.toLowerCase();
+        const rosterMatch = rosterPlayers.find(rp => {
+          const first = rp.firstName.toLowerCase();
+          const full = rp.lastName ? `${rp.firstName} ${rp.lastName}`.toLowerCase() : first;
+          const reversed = rp.lastName ? `${rp.lastName} ${rp.firstName}`.toLowerCase() : first;
+          return nameLower === first || nameLower === full || nameLower === reversed || nameLower.includes(first);
+        });
+        return {
+          ...p,
+          playerId: rosterMatch?.id || p.playerName.toLowerCase().replace(/\s+/g, '-'),
+        };
+      });
+
+      const updatedGame: Game = {
+        ...game,
+        opponent: data.opponent || game.opponent,
+        score: data.score || game.score,
+        date: data.date || game.date,
+        notes: raNotes,
+        playerStats,
+      };
+      updateGame(updatedGame);
+      setRaSaved(true);
+      onGameUpdated?.(updatedGame);
+      setTimeout(() => {
+        cancelReanalyze();
+      }, 1500);
+    } catch (err) {
+      setRaError(err instanceof Error ? err.message : 'Save failed');
+    } finally {
+      setRaSaving(false);
+    }
   }
 
   if (editing) {
@@ -242,6 +366,13 @@ export default function GameDetail({ game, onGameUpdated }: Props) {
         <div className="flex items-center gap-2">
           {saved && <span className="text-sm text-green-600 flex items-center gap-1"><Check size={14} /> Saved</span>}
           <button
+            onClick={startReanalyze}
+            disabled={reanalyzing}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Camera size={14} /> Re-analyze
+          </button>
+          <button
             onClick={startEdit}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
@@ -249,6 +380,56 @@ export default function GameDetail({ game, onGameUpdated }: Props) {
           </button>
         </div>
       </div>
+
+      {reanalyzing && (
+        <div className="space-y-4 border border-blue-200 bg-blue-50/30 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-gray-700">Re-analyze Scoresheet</h4>
+            <button
+              onClick={cancelReanalyze}
+              className="flex items-center gap-1 px-2 py-1 text-sm text-gray-500 hover:text-gray-700"
+            >
+              <X size={14} /> Cancel
+            </button>
+          </div>
+
+          {!raResult && (
+            <>
+              <PhotoUpload file={raFile} preview={raPreview} onFileSelect={handleRaFileSelect} onClear={handleRaClear} />
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  value={raNotes}
+                  onChange={e => setRaNotes(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 w-full text-sm"
+                  rows={2}
+                  placeholder="Any notes for the analysis..."
+                />
+              </div>
+
+              {raFile && (
+                <button
+                  onClick={handleRaAnalyze}
+                  disabled={raAnalyzing}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+                >
+                  {raAnalyzing && <Loader2 size={16} className="animate-spin" />}
+                  {raAnalyzing ? 'Analyzing...' : 'Analyze'}
+                </button>
+              )}
+            </>
+          )}
+
+          {raError && (
+            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">{raError}</div>
+          )}
+
+          {raResult && (
+            <AnalysisResult data={raResult} onSave={handleRaSave} saving={raSaving} saved={raSaved} side="home" />
+          )}
+        </div>
+      )}
 
       {game.playerStats.length > 0 && (
         <StatsTable players={game.playerStats} label="Our Batting" />
