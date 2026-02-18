@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Link, Outlet, useNavigate } from 'react-router-dom';
 import { Camera, Users, BarChart3, History, Settings, ChevronDown } from 'lucide-react';
 import { loadTeams, getActiveTeamId, setActiveTeamId, ensureActiveTeam } from '../hooks/useTeam';
 
@@ -33,17 +33,22 @@ export default function Layout() {
             <p className="text-blue-200 text-sm">KNBSB Baseball Statistics</p>
           </div>
           {teams.length > 0 && (
-            <div className="relative">
-              <select
-                value={activeId || ''}
-                onChange={e => handleTeamChange(e.target.value)}
-                className="appearance-none bg-blue-800 text-white border border-blue-700 rounded-lg px-3 py-1.5 pr-8 text-sm font-medium cursor-pointer hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                {teams.map(t => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-blue-300" />
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <select
+                  value={activeId || ''}
+                  onChange={e => handleTeamChange(e.target.value)}
+                  className="appearance-none bg-blue-800 text-white border border-blue-700 rounded-lg px-3 py-1.5 pr-8 text-sm font-medium cursor-pointer hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  {teams.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-blue-300" />
+              </div>
+              <Link to="/settings" className="text-blue-300 hover:text-white text-xs underline underline-offset-2">
+                Manage
+              </Link>
             </div>
           )}
         </div>
